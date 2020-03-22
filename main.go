@@ -22,6 +22,14 @@ type TweetText struct {
 	Tweettext string `json:"tweet_text,omitempty"  form:"Tweet"`
 	User      string `json:"user,omitempty"  form:"user"`
 	Number    int    `json:"number,omitempty"  form:"number"`
+	Fav       int    `json:"fav,omitempty"  form:"fav"`
+}
+
+type TweetText2 struct {
+	Tweettext string `json:"tweet_text,omitempty"  db:"text"`
+	User      string `json:"user,omitempty"  db:"User"`
+	Number    int    `json:"number,omitempty"  db:"number"`
+	Fav       int    `json:"fav,omitempty"  db:"fav"`
 }
 
 var (
@@ -29,7 +37,7 @@ var (
 )
 
 func main() {
-	_db, err := sqlx.Connect("mysql", fmt.Sprintf("%s:%s@tcp(%s:%s)/%s?charset=utf8&parseTime=False&loc=Local", os.Getenv("DB_USERNAME"), os.Getenv("DB_PASSWORD"), os.Getenv("DB_HOSTNAME"), os.Getenv("DB_PORT"), os.Getenv("DB_DATABASE")))
+	_db, err := sqlx.Connect("mysql", fmt.Sprintf("%s:%s@tcp(%s:%s)/%s?charset=utf8&parseTime=True&loc=Local", os.Getenv("DB_USERNAME"), os.Getenv("DB_PASSWORD"), os.Getenv("DB_HOSTNAME"), os.Getenv("DB_PORT"), os.Getenv("DB_DATABASE")))
 	if err != nil {
 		log.Fatalf("Cannot Connect to Database: %s", err)
 	}
@@ -41,7 +49,10 @@ func main() {
 	e.GET("/ping", func(c echo.Context) error {
 		return c.String(http.StatusOK, "pong")
 	})
+	e.GET("/tweet", getTweetHandler)
 	e.POST("/tweet", postTweetHandler)
+	e.DELETE("/tweet/:number", deleteTweetHandler)
+	e.POST("/tweet/:number", postTweetfavHandler)
 
 	e.Start(":4000")
 }
@@ -59,6 +70,19 @@ func getCityInfoHandler(c echo.Context) error {
 	return c.JSON(http.StatusOK, city)
 }
 
+func getTweetHandler(c echo.Context) error {
+	/*tweettext := c.Param("tweettext")
+	fmt.Println(tweettext)*/
+
+	text := []TweetText2{}
+	db.Select(&text, "SELECT * FROM tweets")
+
+	/*if TweetText2.Tweettext == "" {
+		return c.NoContent(http.StatusNotFound)
+	}*/
+	return c.JSON(http.StatusOK, text)
+}
+
 func postTweetHandler(c echo.Context) error {
 	req := TweetText{}
 	c.Bind(&req)
@@ -69,7 +93,24 @@ func postTweetHandler(c echo.Context) error {
 		return c.String(http.StatusBadRequest, "項目が空です")
 	}
 
-	db.Exec("INSERT INTO tweets (User,text) VALUES (?,?)", req.User, req.Tweettext)
+	db.Exec("INSERT INTO tweets (User,text,fav) VALUES (?,?,0)", req.User, req.Tweettext)
 
+	return c.NoContent(http.StatusCreated)
+}
+
+func deleteTweetHandler(c echo.Context) error {
+	req := TweetText2{}
+	c.Bind(&req)
+
+	db.Exec("DELETE FROM tweets WHERE number = (?)", req.Number)
+
+	return c.NoContent(http.StatusCreated)
+}
+
+func postTweetfavHandler(c echo.Context) error {
+	req := TweetText2{}
+	c.Bind(&req)
+
+	db.Exec("UPDATE tweets SET fav = fav + 1 WHERE number = (?)", req.Number)
 	return c.NoContent(http.StatusCreated)
 }
