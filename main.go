@@ -5,6 +5,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"strconv"
 
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/jmoiron/sqlx"
@@ -29,7 +30,7 @@ type TweetText2 struct {
 	Tweettext string `json:"tweet_text,omitempty"  db:"text"`
 	User      string `json:"user,omitempty"  db:"User"`
 	Number    int    `json:"number,omitempty"  db:"number"`
-	Fav       int    `json:"fav,omitempty"  db:"fav"`
+	Fav       int    `json:"fav"  db:"fav"`
 }
 
 var (
@@ -50,6 +51,7 @@ func main() {
 		return c.String(http.StatusOK, "pong")
 	})
 	e.GET("/tweet", getTweetHandler)
+	e.GET("/tweet/page/:number", getTweetPageHandler)
 	e.POST("/tweet", postTweetHandler)
 	e.DELETE("/tweet/:number", deleteTweetHandler)
 	e.POST("/tweet/:number", postTweetfavHandler)
@@ -76,6 +78,21 @@ func getTweetHandler(c echo.Context) error {
 
 	text := []TweetText2{}
 	db.Select(&text, "SELECT * FROM tweets")
+
+	/*if TweetText2.Tweettext == "" {
+		return c.NoContent(http.StatusNotFound)
+	}*/
+	return c.JSON(http.StatusOK, text)
+}
+func getTweetPageHandler(c echo.Context) error {
+	/*tweettext := c.Param("tweettext")
+	fmt.Println(tweettext)*/
+	i := 1
+	number := c.Param("number")
+	i, _ = strconv.Atoi(number)
+	text := []TweetText2{}
+	fmt.Println(i)
+	db.Select(&text, "SELECT * FROM tweets limit 10 offset ?", i)
 
 	/*if TweetText2.Tweettext == "" {
 		return c.NoContent(http.StatusNotFound)
